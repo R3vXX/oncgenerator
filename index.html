@@ -4,166 +4,514 @@
 
 <head>
 <meta charset="utf-8">
-<title>ONC File Generator</title>
+<title>OpenVPN ONC File Generator</title>
 <link href='https://fonts.googleapis.com/css?family=Oswald' rel='stylesheet' type='text/css'>
 <link rel="stylesheet" href="style/style.css" type="text/css" />
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+<script src="onc_gen.js"></script>
 </head>
-
 <body>
-<script> 
-	var guid1 = guid();
-	var guid2 = guid();
-	var result = "";
-	
-	function checkFields() {
-		if(
-			document.forms['oncValues'].name.value === "" ||
-			document.forms['oncValues'].hostname.value === "" ||
-			document.forms['oncValues'].port.value === "" ||
-			document.forms['oncValues'].username.value === "" ||
-			document.forms['oncValues'].X509.value === "" ||
-			document.forms['oncValues'].TLS.value === "" 
-			){
-			alert("Please fill out all the fields");
-			return;
-		}
-		createResult();
-	}
-	
-	
-	function guid() {
-	  function s4() {
-	    return Math.floor((1 + Math.random()) * 0x10000)
-	      .toString(16)
-	      .substring(1);
-	  }
-	  return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
-	    s4() + '-' + s4() + s4() + s4();
-	}
-
-	function formatValue(value,type){
-
-		if (type === "X509") {
-			var result = value.replace(/^.*#.*$\n/mg, "");
-			result = result.replace(/^.*-.*$/mg, "");
-			result = result.replace(/(\r\n|\n|\r)/gm,"");
-			return result
-		}else if (type === "TLS"){
-			var result = value.replace(/^.*#.*$\n/mg, "");
-			result = result.replace(/(?:\r\n|\r|\n)/g,"\\n");
-			return result			
-		}
-	}
-	
-	function createResult(){
-		
-		result = 
-		`{
-		 "Type":"UnencryptedConfiguration",
-		      "Certificates": [ {
-		      "GUID": "{${guid1}}",
-		      "Type": "Authority",
-		      "X509": "${formatValue(document.forms['oncValues'].X509.value,"X509")}"
-		   } ],
-		    "NetworkConfigurations": [ {
-		      "GUID": "{${guid2}}",
-		      "Name": "${document.forms['oncValues'].name.value}",
-		      "Type": "VPN",
-		      "VPN": {
-		          "Type": "OpenVPN",
-		          "Host": "${document.forms['oncValues'].hostname.value}",
-		          "OpenVPN": {
-		                        "ServerCARef": "{${guid1}}",
-		                    "AuthRetry": "interact",
-		                    "ClientCertType": "Pattern",
-		                    "ClientCertPattern": {              
-		                          "IssuerCARef": [ "{${guid1}}" ]
-		                         },
-		                    "CompLZO": "true",
-		                    "Port": ${document.forms['oncValues'].port.value},
-		                    "Proto": "udp",
-		                    "RemoteCertTLS":"server",
-		                    "RemoteCertEKU": "TLS Web Server Authentication",
-		                    "SaveCredentials": false,
-		                    "ServerPollTimeout": 10,
-		                    "Username": "${document.forms['oncValues'].username.value}",
-		                    "KeyDirection":"1",                    
-		                    "TLSAuthContents":"${formatValue(document.forms['oncValues'].TLS.value,"TLS")}"
-		                     }
-		             }
-		                               } ]
-		}`;
-		
-		download(document.forms['oncValues'].name.value+".onc",result)
-	}
-	
-	function download(filename, text) {
-	    var pom = document.createElement('a');
-	    pom.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
-	    pom.setAttribute('download', filename);
-	
-	    if (document.createEvent) {
-	        var event = document.createEvent('MouseEvents');
-	        event.initEvent('click', true, true);
-	        pom.dispatchEvent(event);
-	    }
-	    else {
-	        pom.click();
-	    }
-	}
-
-</script>
 
 <div id="mainContent">
-	<h1>ONC File Generator</h1>	
+	<h1>OpenVPN ONC File Generator</h1>	
 	<p>This page main goal is to generate an ONC file that can be used to import an OpenVPN connection in ChromeOS</p>
 	<br />
 	<br />
+	<div id="error"></div><br />
     <form name="oncValues">
-       	<label for="name">Name of the connection</label>
-    	<input type="text" name="name"/>
+	<label for="name">Name of the connection</label>
+	<div class="tooltip">
+		<img src="question-mark.png"/>
+		<span class="tooltiptext">A user friendly description of this connection. This name will not be used for referencing and may not be unique. Instead it may be used for describing the network to the user.</span>
+	</div>
+	<input class="textbox" type="text" id="name" name="name"/>
     	<br />
     	<br />
     	<label for="hostname">Hostname/IP</label>
-    	<input type="text" name="hostname"/>
+	<div class="tooltip">
+		<img src="question-mark.png"/>
+		<span class="tooltiptext">Host name or IP address of server to connect to. The only scenario that does not require a host is a VPN that encrypts but does not tunnel traffic. Standalone IPsec (v1 or v2, cert or PSK based нн this is not the same as L2TP over IPsec) is one such setup. For all other types of VPN, the Hostfield is required.</span>
+	</div>
+    	<input class="textbox" type="text" name="hostname" id="hostname"/>
      	<br />
     	<br />
     	<label for="port">Port</label>
-    	<input type="text" name="port"/>
+	<div class="tooltip">
+		<img src="question-mark.png"/>
+		<span class="tooltiptext">Port for connecting to server.</span>
+	</div>
+    	<input class="textbox" type="text" name="port" id="port" value="1194"/>
      	<br />
     	<br />
     	<label for="username">Username</label>
-    	<input type="text" name="username"/>
+	<div class="tooltip">
+		<img src="question-mark.png"/>
+		<span class="tooltiptext">OpenVPN user name. This value is subject to string expansions. If not specified, user is prompted at time of connection.</span>
+	</div>
+    	<input class="textbox" type="text" name="username" id="username"/>
      	<br />
     	<br /> 
+	<label for="cipher">Cipher</label>
+	<div class="tooltip">
+		<img src="question-mark.png"/>
+		<span class="tooltiptext">Cipher to use.</span>
+	</div>
+    	<select name="cipher" id="cipher">
+		<option value="AES-128-CBC">AES-128-CBC (128-bit)</option>
+		<option value="AES-128-CFB">AES-128-CFB (128-bit)</option>
+		<option value="AES-128-CFB1">AES-128-CFB1 (128-bit)</option>
+		<option value="AES-128-CFB8">AES-128-CFB8 (128-bit)</option>
+		<option value="AES-128-OFB">AES-128-OFB (128-bit)</option>
+		<option value="AES-192-CBC">AES-192-CBC (192-bit)</option>
+		<option value="AES-192-CFB">AES-192-CFB (192-bit)</option>
+		<option value="AES-192-CFB1">AES-192-CFB1 (192-bit)</option>
+		<option value="AES-192-CFB8">AES-192-CFB8 (192-bit)</option>
+		<option value="AES-192-OFB">AES-192-OFB (192-bit)</option>
+		<option value="AES-256-CBC">AES-256-CBC (256-bit)</option>
+		<option value="AES-256-CFB">AES-256-CFB (256-bit)</option>
+		<option value="AES-256-CFB1">AES-256-CFB1 (256-bit)</option>
+		<option value="AES-256-CFB8">AES-256-CFB8 (256-bit)</option>
+		<option value="AES-256-OFB">AES-256-OFB (256-bit)</option>
+		<option value="BF-CBC" selected>BF-CBC (128-bit)</option>
+		<option value="BF-CFB">BF-CFB (128-bit)</option>
+		<option value="BF-OFB">BF-OFB (128-bit)</option>
+		<option value="CAMELLIA-128-CBC">CAMELLIA-128-CBC (128-bit)</option>
+		<option value="CAMELLIA-128-CFB">CAMELLIA-128-CFB (128-bit)</option>
+		<option value="CAMELLIA-128-CFB1">CAMELLIA-128-CFB1 (128-bit)</option>
+		<option value="CAMELLIA-128-CFB8">CAMELLIA-128-CFB8 (128-bit)</option>
+		<option value="CAMELLIA-128-OFB">CAMELLIA-128-OFB (128-bit)</option>
+		<option value="CAMELLIA-192-CBC">CAMELLIA-192-CBC (192-bit)</option>
+		<option value="CAMELLIA-192-CFB">CAMELLIA-192-CFB (192-bit)</option>
+		<option value="CAMELLIA-192-CFB1">CAMELLIA-192-CFB1 (192-bit)</option>
+		<option value="CAMELLIA-192-CFB8">CAMELLIA-192-CFB8 (192-bit)</option>
+		<option value="CAMELLIA-192-OFB">CAMELLIA-192-OFB (192-bit)</option>
+		<option value="CAMELLIA-256-CBC">CAMELLIA-256-CBC (256-bit)</option>
+		<option value="CAMELLIA-256-CFB">CAMELLIA-256-CFB (256-bit)</option>
+		<option value="CAMELLIA-256-CFB1">CAMELLIA-256-CFB1 (256-bit)</option>
+		<option value="CAMELLIA-256-CFB8">CAMELLIA-256-CFB8 (256-bit)</option>
+		<option value="CAMELLIA-256-OFB">CAMELLIA-256-OFB (256-bit)</option>
+		<option value="CAST5-CBC">CAST5-CBC (128-bit)</option>
+		<option value="CAST5-CFB">CAST5-CFB (128-bit)</option>
+		<option value="CAST5-OFB">CAST5-OFB (128-bit)</option>
+		<option value="DES-CBC">DES-CBC (64-bit)</option>
+		<option value="DES-CFB">DES-CFB (64-bit)</option>
+		<option value="DES-CFB1">DES-CFB1 (64-bit)</option>
+		<option value="DES-CFB8">DES-CFB8 (64-bit)</option>
+		<option value="DES-EDE-CBC">DES-EDE-CBC (128-bit)</option>
+		<option value="DES-EDE-CFB">DES-EDE-CFB (128-bit)</option>
+		<option value="DES-EDE-OFB">DES-EDE-OFB (128-bit)</option>
+		<option value="DES-EDE3-CBC">DES-EDE3-CBC (192-bit)</option>
+		<option value="DES-EDE3-CFB">DES-EDE3-CFB (192-bit)</option>
+		<option value="DES-EDE3-CFB1">DES-EDE3-CFB1 (192-bit)</option>
+		<option value="DES-EDE3-CFB8">DES-EDE3-CFB8 (192-bit)</option>
+		<option value="DES-EDE3-OFB">DES-EDE3-OFB (192-bit)</option>
+		<option value="DES-OFB">DES-OFB (64-bit)</option>
+		<option value="DESX-CBC">DESX-CBC (192-bit)</option>
+		<option value="IDEA-CBC">IDEA-CBC (128-bit)</option>
+		<option value="IDEA-CFB">IDEA-CFB (128-bit)</option>
+		<option value="IDEA-OFB">IDEA-OFB (128-bit)</option>
+		<option value="RC2-40-CBC">RC2-40-CBC (40-bit)</option>
+		<option value="RC2-64-CBC">RC2-64-CBC (64-bit)</option>
+		<option value="RC2-CBC">RC2-CBC (128-bit)</option>
+		<option value="RC2-CFB">RC2-CFB (128-bit)</option>
+		<option value="RC2-OFB">RC2-OFB (128-bit)</option>
+		<option value="RC5-CBC">RC5-CBC (128-bit)</option>
+		<option value="RC5-CFB">RC5-CFB (128-bit)</option>
+		<option value="RC5-OFB">RC5-OFB (128-bit)</option>
+		<option value="SEED-CBC">SEED-CBC (128-bit)</option>
+		<option value="SEED-CFB">SEED-CFB (128-bit)</option>
+		<option value="SEED-OFB">SEED-OFB (128-bit)</option>
+		<option value="none">None (No Encryption)</option>
+	</select>
+     	<br />
+    	<br /> 
+	<label for="auth">Auth</label>
+	<div class="tooltip">
+		<img src="question-mark.png"/>
+		<span class="tooltiptext">Authentication digest algorithm.</span>
+	</div>
+    	<select name="auth" id="auth">
+		<option value="DSA">DSA (160-bit)</option>
+		<option value="DSA-SHA">DSA-SHA (160-bit)</option>
+		<option value="DSA-SHA1">DSA-SHA1 (160-bit)</option>
+		<option value="DSA-SHA1-old">DSA-SHA1-old (160-bit)</option>
+		<option value="MD4">MD4 (128-bit)</option>
+		<option value="MD5">MD5 (128-bit)</option>
+		<option value="MDC2">MDC2 (128-bit)</option>
+		<option value="RIPEMD160">RIPEMD160 (160-bit)</option>
+		<option value="RSA-MD4">RSA-MD4 (128-bit)</option>
+		<option value="RSA-MD5">RSA-MD5 (128-bit)</option>
+		<option value="RSA-MDC2">RSA-MDC2 (128-bit)</option>
+		<option value="RSA-RIPEMD160">RSA-RIPEMD160 (160-bit)</option>
+		<option value="RSA-SHA">RSA-SHA (160-bit)</option>
+		<option value="RSA-SHA1">RSA-SHA1 (160-bit)</option>
+		<option value="RSA-SHA1-2">RSA-SHA1-2 (160-bit)</option>
+		<option value="RSA-SHA224">RSA-SHA224 (224-bit)</option>
+		<option value="RSA-SHA256">RSA-SHA256 (256-bit)</option>
+		<option value="RSA-SHA384">RSA-SHA384 (384-bit)</option>
+		<option value="RSA-SHA512">RSA-SHA512 (512-bit)</option>
+		<option value="SHA">SHA (160-bit)</option>
+		<option value="SHA1" selected>SHA1 (160-bit)</option>
+		<option value="SHA224">SHA224 (224-bit)</option>
+		<option value="SHA256">SHA256 (256-bit)</option>
+		<option value="SHA384">SHA384 (384-bit)</option>
+		<option value="SHA512">SHA512 (512-bit)</option>
+		<option value="ecdsa-with-SHA1">ecdsa-with-SHA1 (160-bit)</option>
+		<option value="whirlpool">whirlpool (512-bit)</option>
+		<option value="none">None (No Authentication)</option>
+	</select>
+     	<br />
+    	<br /> 
+	<label for="authnocache">Auth No Cache</label>
+	<div class="tooltip">
+		<img src="question-mark.png"/>
+		<span class="tooltiptext">Disables caching of credentials in memory.</span>
+	</div>
+    	<select name="authnocache" id="authnocache">
+		<option value="false" selected>False</option>
+		<option value="true">True</option>
+	</select>
+	<br />
+    	<br />
+	<label for="protocol">Protocol</label>
+	<div class="tooltip">
+		<img src="question-mark.png"/>
+		<span class="tooltiptext">Protocol for communicating with server.</span>
+	</div>
+    	<select name="protocol" id="protocol">
+		<option value="udp" selected>UDP</option>
+		<option value="tcp">TCP</option>
+	</select>
+	<br />
+    	<br />
+	<label for="complzo">Comp LZO</label>
+	<div class="tooltip">
+		<img src="question-mark.png"/>
+		<span class="tooltiptext">Decides to fast LZO compression with true and false as other values.</span>
+	</div>
+    	<select name="complzo" id="complzo">
+		<option value="adaptive" selected>Adaptive</option>
+		<option value="false">False</option>
+		<option value="true">True</option>
+	</select>
+	<br />
+    	<br />
+	<label for="compnoadapt">Comp No Adapt</label>
+	<div class="tooltip">
+		<img src="question-mark.png"/>
+		<span class="tooltiptext">Disables adaptive compression.</span>
+	</div>
+    	<select name="compnoadapt" id="compnoadapt">
+		<option value="false" selected>False</option>
+		<option value="true">True</option>
+	</select>
+	<br />
+    	<br />
+	<label for="savecreds">Save Credentials</label>
+	<div class="tooltip">
+		<img src="question-mark.png"/>
+		<span class="tooltiptext">If false, require user to enter credentials each time they connect.</span>
+	</div>
+    	<select name="savecreds" id="savecreds">
+		<option value="false" selected>False</option>
+		<option value="true">True</option>
+	</select>
+	<br />
+    	<br />
+	<label for="authretry">Authentication Retry</label>
+	<div class="tooltip">
+		<img src="question-mark.png"/>
+		<span class="tooltiptext">Controls how OpenVPN responds to username/password verification errors: Either fail with error on retry (none), retry without asking for authentication (nointeract), or ask again for authentication each time (interact).</span>
+	</div>
+	<select name="authretry" id="authrety">
+		<option value="interact" selected>Interactive</option>
+		<option value="nointeract">Non-Interactive</option>
+		<option value="none">None</option>
+	</select>
+	<br />
+    	<br />
+	<label for="nscerttype">NS Cert Type</label>
+	<div class="tooltip">
+		<img src="question-mark.png"/>
+		<span class="tooltiptext">If set, checks peer certificate type. Should only be set to server if set.</span>
+	</div>
+	<select name="nscerttype" id="nscerttype">
+		<option value="server" selected>Server</option>
+		<option value="">None</option>
+	</select>
+	<br />
+    	<br />
+	<label for="pushpeerinfo">Push Peer Info</label>
+	<div class="tooltip">
+		<img src="question-mark.png"/>
+		<span class="tooltiptext">Push additional information about the clinet to the server: client OpenVPN version, MAC address of clients default gateway, client OS platform, if client was built with LZO stub capability, client environment variables starting with UV_</span>
+	</div>
+    	<select name="pushpeerinfo" id="pushpeerinfo">
+		<option value="false" selected>False</option>
+		<option value="true">True</option>
+	</select>
+	<br />
+    	<br />
+	<label for="renegsec">Regeotiate Seconds</label>
+	<div class="tooltip">
+		<img src="question-mark.png"/>
+		<span class="tooltiptext">Renegotiate data channel key after this number of seconds.</span>
+	</div>
+    	<input class="textbox" type="text" name="renegsec" value="3600" id="renegsec"/>
+     	<br />
+    	<br />
+	<label for="serverpolltimeout">Server Poll Timeout</label>
+	<div class="tooltip">
+		<img src="question-mark.png"/>
+		<span class="tooltiptext">Spend no more than this number of seconds before trying the next server.</span>
+	</div>
+    	<input class="textbox" type="text" name="serverpolltimeout" value="120" id="serverpolltimeout"/>
+     	<br />
+    	<br />
+	<label for="shaper">Bandwidth Limit</label>
+	<div class="tooltip">
+		<img src="question-mark.png"/>
+		<span class="tooltiptext">If not specified no bandwidth limiting, otherwise limit bandwidth of outgoing tunnel data to this number of bytes per second.</span>
+	</div>
+    	<input class="textbox" type="text" name="shaper" placeholder="Bytes Per Second" id="shaper"/>
+     	<br />
+    	<br />
+	<label for="staticchallenge">Static Challenge Response</label>
+	<div class="tooltip">
+		<img src="question-mark.png"/>
+		<span class="tooltiptext">String is used in static challenge response. Note that echoing is always done.</span>
+	</div>
+    	<input class="textbox" type="text" name="staticchallenge" id="staticchallenge"/>
+     	<br />
+    	<br />
+	<label for="userauthtype">User Authentication Type</label>
+	<div class="tooltip">
+		<img src="question-mark.png"/>
+		<span class="tooltiptext">Determines the required form of user authentication.</span>
+	</div>
+    	<select name="userauthtype" id="userauthtype">
+		<option value="PasswordAndOTP" selected>PasswordAndOTP</option>
+		<option value="Password">Password</option>
+		<option value="OTP">OTP</option>
+		<option value="None" selected>None</option>
+	</select>
+	<br />
+    	<br />
+	<label for="ignoredefaultroute">Ignore Default Route</label>
+	<div class="tooltip">
+		<img src="question-mark.png"/>
+		<span class="tooltiptext">Omits a default route to the VPN gateway while the connection is active. By default, the client creates a default route to the gateway address advertised by the VPN server. Setting this value to true will allow split tunnelling for configurations where the VPN server omits explicit default routes. This is roughly equivalent to omitting "redirect-gateway" OpenVPN client configuration option. If server pushes a "redirect-gateway" configuration flag to the client, this option is ignored.</span>
+	</div>
+    	<select name="ignoredefaultroute" id="ignoredefaultroute">
+		<option value="false" selected>False</option>
+		<option value="true">True</option>
+	</select>
+	<br />
+    	<br />
+	<label for="verb">Verbosity</label>
+	<div class="tooltip">
+		<img src="question-mark.png"/>
+		<span class="tooltiptext">Verbosity level, defaults to OpenVPN's default if not specified.</span>
+	</div>
+	<select name="verb" id="verb">
+		<option value="0">0 - silent, except for fatal errors</option>
+		<option value="1" selected>1 - open vpn default</option>
+		<option value="2">2</option>
+		<option value="3">3</option>
+		<option value="4">4 - reasonable for general usage</option>
+		<option value="5">5 - can help debug connection problems</option>
+		<option value="6">6 - can help debug connection problems</option>
+		<option value="7">7</option>
+		<option value="8">8</option>
+		<option value="9">9 - extremely verbose</option>
+	</select>
+	<br />
+	<br />
        	<label for="X509">Content of your CA.crt</label>
-    	<textarea name="X509" rows="25" cols="50"></textarea>
+	<div class="tooltip">
+		<img src="question-mark.png"/>
+		<span class="tooltiptext">For certificate without private keys, this is the X509 certificate in PEM format.</span>
+	</div>
+    	<textarea name="X509" rows="25" cols="50" id="X509"></textarea>
      	<br />
     	<br />
-       	<label for="TLS">Content of your TLS auth key</label>
-    	<textarea name="TLS" rows="25" cols="50"></textarea>
-     	<br />
-    	<br />
+	<input type="checkbox" id="verifyX509" value="TLS" id="TLS"> Verify X509
+	<div class="tooltip">
+		<img src="question-mark.png"/>
+		<span class="tooltiptext">If set, the "--verify-x509-name" argument is passed to OpenVPN with the values of this object and only connections will be accepted if a host's X.509 name is equal to the given name.</span>
+	</div>
+	<br />
+	<div id="x509verification">
+		<label for="X509name">Name</label>
+		<div class="tooltip">
+			<img src="question-mark.png"/>
+			<span class="tooltiptext">The name that the host's X.509 name is compared to. Which host name is compared depends on the value of Type.</span>
+		</div>
+		<input class="textbox" type="text" name="X509name" id="X509name"/>
+		<br />
+		<br />
+		<label for="X509type">Type</label>
+		<div class="tooltip">
+			<img src="question-mark.png"/>
+			<span class="tooltiptext">Determines which of the host's X.509 names will be verified. Allowed values are name, name-prefix, and subject. See OPenVPN's documentation for "--verify-x509-name" for the meaning of each value. Defaults to OpenVPN's default if not specified.</span>
+		</div>
+		<select name="X509type" id="X509type">
+			<option value="name" selected>Name</option>
+			<option value="name-prefix">Name Prefix</option>
+			<option value="subject">Subject</option>
+		</select>
+		<br />
+	</div>
+	<br />
+	<label for="hash">Verify Hash</label>
+	<div class="tooltip">
+		<img src="question-mark.png"/>
+		<span class="tooltiptext">If set, this value is passed as the "--verify-hash" argument to OpenVPN, which specifies the SHA1 fingerprint for hte level-1 certificate.</span>
+	</div>
+	<input class="textbox" type="text" name="hash" id="hash"/>
+	<br />
+	<br />
+	<input type="checkbox" id="enableTLS" value="TLS"> Use TLS<br>
+	<div id="tlsbody">
+		<label for="TLS">Content of your TLS auth key</label>
+		<div class="tooltip">
+			<img src="question-mark.png"/>
+			<span class="tooltiptext">If not set, tls auth is not used. If set, this is the TLS Auth key contents (usually starts with "---BEGIN OpenVPN Static Key..."</span>
+		</div>
+		<textarea name="TLS" rows="25" cols="50" id="TLS"></textarea>
+		<br />
+		<br />
+		<label for="keydirection">Key Direction</label>
+		<div class="tooltip">
+			<img src="question-mark.png"/>
+			<span class="tooltiptext">Passed as --key-direction. The optional direction parameter enables the use of 4 distinct keys (HMAC-send, cipher-encrypt, HMAC-receive, cipher-decrypt), so that each data flow direction has a different set of HMAC and cipher keys. This has a number of desirable security properties including eliminating certain kinds of DoS and message replay attacks.</span>
+		</div>
+		<select name="keydirection" id="keydirection">
+			<option value="1" selected>Client</option>
+			<option value="0">Server</option>
+		</select>
+		<br />
+		<br />
+		<label for="remotecerttls">RemoteCertTLS</label>
+		<div class="tooltip">
+			<img src="question-mark.png"/>
+			<span class="tooltiptext">Require peer certificate signing based on RFC3280 rules.</span>
+		</div>
+		<select name="remotecerttls" id="remotecerttls">
+			<option value="server" selected>Server</option>
+			<option value="">None</option>
+		</select>
+		<br />
+		<br />
+		<label for="remotecerteku">RemoteCertEKU</label>
+		<div class="tooltip">
+			<img src="question-mark.png"/>
+			<span class="tooltiptext">Require that the peer certificate was signed with this explicit extended key usage in oid notation.</span>
+		</div>
+		<input class="textbox" type="text" name="remotecerteku" value="TLS Web Server Authentication" id="remotecerteku"/>
+		<br />
+		<br />
+		<label for="tlsremote">TLSRemote</label>
+		<div class="tooltip">
+			<img src="question-mark.png"/>
+			<span class="tooltiptext">If set, only allow connections to server hosts with X509 name or common name equal to this string.</span>
+		</div>
+		<input class="textbox" type="text" name="tlsremote" id="tlsremote"/>
+		<br />
+		<br />
+	</div>
+	<br />
+	<br />
+	<label for="clienttype">Client Cert</label>
+	<div class="tooltip">
+		<img src="question-mark.png"/>
+		<span class="tooltiptext">None implies that the server is configured to not require client certificates.</span>
+	</div>
+	<select id="clienttype" name="clienttype">
+		<option value="Ref" selected>Certificate</option>
+		<option value="Pattern" selected>Pattern</option>
+		<option value="" selected>None</option>
+	</select>
+	<div id="clientcert">
+		<label for="TLS">Content of your Client key</label>
+		<div class="tooltip">
+			<img src="question-mark.png"/>
+			<span class="tooltiptext">For certificates with private keys, this is the base64 encoding of the PKCS#12 file.</span>
+		</div>
+		<textarea name="PKCS12" rows="25" cols="50" id="PKCS12"></textarea>
+		<br />
+		<br />
+	</div>
+	<div id="clientpattern">
+		<label for="issuercaref">IssuerCARef</label>
+		<div class="tooltip">
+			<img src="question-mark.png"/>
+			<span class="tooltiptext">Array of references to certificates. At least one must have signed the client certificate.</span>
+		</div>
+		<select name="issuercaref" id="issuercaref">
+			<option value="ca" selected>CA Cert</option>
+			<option value="" selected>None</option>
+		</select>
+		<br />
+		<br />
+		<input type="checkbox" id="enableIssuer" value="TLS"> Issuer
+		<div class="tooltip">
+			<img src="question-mark.png"/>
+			<span class="tooltiptext">Pattern to match the issuer X.509 settings against. If not specified, the only checks done will be a signature check against the IssuerCARef field. Issuer of the certificate must match this field exactly to match the pattern.</span>
+		</div>
+		<br />
+		<div id="issuerbody">
+			<label for="commonname">Common Name</label>
+			<div class="tooltip">
+				<img src="question-mark.png"/>
+				<span class="tooltiptext">Certificate subject's commonName must match this string if present.</span>
+			</div>
+			<input class="textbox" type="text" name="commonname" id="commonname"/>
+			<br />
+			<br />
+			<label for="locality">Locality</label>
+			<div class="tooltip">
+				<img src="question-mark.png"/>
+				<span class="tooltiptext">Certificate subject's location must match this string if present.</span>
+			</div>
+			<input class="textbox" type="text" name="locality" id="locality"/>
+			<br />
+			<br />
+			<label for="organization">Organization</label>
+			<div class="tooltip">
+				<img src="question-mark.png"/>
+				<span class="tooltiptext">At least one of the certificate subject's organizations must match this string if present.</span>
+			</div>
+			<input class="textbox" type="text" name="organization" id="organization"/>
+			<br />
+			<br />
+			<label for="organizationalunit">Organizational Unit</label>
+			<div class="tooltip">
+				<img src="question-mark.png"/>
+				<span class="tooltiptext">At least one of certificate subject's organizational units must match this string if present.</span>
+			</div>
+			<input class="textbox" type="text" name="organizationalunit" id="organizationalunit"/>
+			<br />
+			<br />
+			<label for="enrollmenturi">Enrollment URI</label>
+			<div class="tooltip">
+				<img src="question-mark.png"/>
+				<span class="tooltiptext">If no certificate matches this CertificatePattern, the first URI from this array with a recognized scheme is navigated to, with the intention this informs the user how to either get the certificate or gets the certificate for the user.</span>
+			</div>
+			<input class="textbox" type="text" name="enrollmenturi" id="enrollmenturi"/>
+		</div>
+		<br />
+		<br />
+	</div>
+	<br />
+	<br />
     	<input type="button" onclick="checkFields()" value="Generate File"/>
     </form>
     <br />
     <br />
-    <p>Thanks to the fine gentleman who made the tutorial <a href="https://docs.google.com/document/d/18TU22gueH5OKYHZVJ5nXuqHnk2GN6nDvfu2Hbrb4YLE/pub">here</a></p>
-    <p><a href="https://github.com/CharlesErickT/oncgenerator">GitHub</a></p>
+    <p>Based off <a href="https://github.com/CharlesErickT/oncgenerator">CharlesErickT oncgenerator</a></p>
+    <p><a href="http://dev.chromium.org/chromium-os/chromiumos-design-docs/open-network-configuration">ONC Documentation</a></p>
 </div>
-
-	
-<!-- Google Analytic -->
-<script>
-  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
-
-  ga('create', 'UA-78698497-1', 'auto');
-  ga('send', 'pageview');
-
-</script>
 </body>
 
 </html>

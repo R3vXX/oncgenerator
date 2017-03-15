@@ -9,7 +9,7 @@ body{
     margin-bottom:150px;
 }
 
-#mainContent input{
+#mainContent select{
     float: right;
     display: block;
     border:1px solid black;
@@ -25,6 +25,72 @@ body{
 
 }
 
-#mainContent textarea{
+#x509verification {
+	padding: 5px;
+	border:1px solid black;
+	display: none;
+}
+
+#tlsbody {
+	padding: 5px;
+	border:1px solid black;
+	display: none;
+}
+
+#clientcert,
+#clientpattern {
+	padding: 5px;
+	border:1px solid black;
+	display: none;
+}
+
+#issuerbody{
+	display: none;
+	border:1px solid black;
+	padding: 5px;
+}
+
+.textarea{
     border:1px solid black;
+}
+
+.textbox{
+	float: right;
+    display: block;
+	border:1px solid black;
+}
+
+.tooltip {
+    position: relative;
+    display: inline-block;
+    border-bottom: 1px dotted black;
+}
+
+.tooltip .tooltiptext {
+    visibility: hidden;
+    width: 250px;
+    background-color: black;
+    color: #fff;
+    text-align: left;
+    border-radius: 6px;
+    padding: 5px;
+	font-family: 'Tahoma, Geneva, sans-serif';
+    position: absolute;
+    z-index: 1;
+    top: -5px;
+    left: 105%;
+}
+
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+}
+
+#error {
+	background-color: red;
+	color: #fff;
+	display: none;
+}
+
+.required {
+	border:2px solid red !important;
 }
